@@ -37,7 +37,7 @@ float d2r(float degree){ return degree * PI / 180.0; }
 //collision detector for point+vector and line segment
 int collide(int i, float mx, float mz){
   float wvx = m[i+5], wvz = m[i+6], cvx = cx-m[i], cvz = cz-m[i+1]; 
-  float cross1 = ((mx+cx-m[i])*wvz - (mz+cz-m[i+1])*wvx)/m[i+4];
+  float cross1 = ((mx+cvx)*wvz - (mz+cvz)*wvx)/m[i+4];
   float cross2 = (cvx*wvz - cvz*wvx)/m[i+4];
   //cross products detect line collision, then dots detect line segment bounds
   return (((abs(cross1)<0.5 && abs(cross2)>abs(cross1)) || cross1*cross2<0 ) && 
