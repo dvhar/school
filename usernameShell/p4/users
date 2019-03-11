@@ -1,0 +1,187 @@
+#!/bin/bash
+PATH=/bin:/usr/bin
+tempfile=col$$
+touch $tempfile
+trap "rm $tempfile" 2 15
+
+usage() {
+cat << EOF
+
+$0 usage information:
+
+  To input names from a file, use -i [input file].
+  To input a name from the command line, use -f [first name] -l [last name].
+  You must use one of the input methods, but not both.
+
+  To specify an output file that you want to create or overwrite, use -o [output file].
+  To specify an output file that you want to append to, use -a [output file]. Use this option to add a set of users to a system.
+  You must specify an output file.
+
+  To keep a collision report file, ${tempfile}, use -c without an argument.
+
+  To see this message, use -h or run $0 without an argument
+
+EOF
+
+}
+
+
+namein=false;keep=false
+while getopts "f:l:i:a:o:hc" opt; do
+  case $opt in
+    f)
+      fn=$OPTARG      
+      namein=true
+      ;;
+    l)
+      ln=$OPTARG      
+      namein=true
+      ;;
+    i)
+      infile=$OPTARG
+      ;;
+    a)
+      outfile=$OPTARG
+      append=true
+      ;;
+    o)
+      outfile=$OPTARG
+      append=false
+      ;;
+    c)
+      keep=true
+      ;;
+
+    h)
+      usage
+      exit 0
+      ;;
+    \?)
+      echo "invalid option"
+      ;;
+  esac
+done
+
+
+
+#make sure options are used correctly
+[[ $# -eq 0 ]] && usage && exit 0
+[ ! $outfile ] && echo "You must specify an output file using -o [output file] or -a [output file]" && exit 1
+[ $namein = true ] && [ $infile ] && echo "Name argument and name file both specified. -i requres that you do not use -f or -l" && exit 1
+[ ! $infile ] && [ $namein = false ] && echo "You must provide an input file using -i [input file] or a name using -f [first name] and -l [last name]" && exit 1
+
+
+#parse names from file
+parseFile(){
+  fnames=""
+  lnames=""
+  fnames="$fnames $( awk '/^[^,]+$/ {print toupper(substr($1,1,1)) tolower(substr($1,2,30))}' $infile)"
+  fnames="$fnames $( awk -F, '/,/ {print $2}' $infile | awk '{print toupper(substr($1,1,1)) tolower(substr($1,2,30))}')"
+  lnames="$lnames $( awk '/^[^,]+$/ {print}' $infile | sed "s/\(III\|II\|IV\|JR\|VAN\)//" | awk '{print toupper(substr($NF,1,1)) tolower(substr($NF,2,40))}')"
+  lnames="$lnames $( awk -F, '/,/ {print $1}' $infile | sed "s/\(III\|II\|IV\|JR\|VAN\)//" | awk '{print toupper(substr($NF,1,1)) tolower(substr($NF,2,40))}')"
+}
+
+
+#get names and put them into arrays
+[ $namein = true ] && fnames=${fn-$ln} && lnames=${ln-$fn}
+[ $infile ] && parseFile
+fnames=($fnames)
+lnames=($lnames)
+nonames=""
+declare -A collisions
+
+
+
+#generate usernames in different ways
+makeName() {
+  case $1 in
+    5) echo ${lnames[i]} | sed "s/\(-\|'\)//g" | awk '{print tolower(substr($1,1,8))}';;
+    4) echo ${fnames[i]} | sed "s/\(-\|'\)//g" | awk '{print tolower(substr($1,1,8))}';;
+    3) echo ${fnames[i]} ${lnames[i]} | sed "s/\(-\|'\)//g" | awk '{print tolower(substr($1,1,1)substr($2,1,7))}';;
+    2) echo ${fnames[i]} ${lnames[i]} | sed "s/\(-\|'\)//g" | awk '{print tolower(substr($1,1,7)substr($2,1,1))}';;
+    1) echo ${fnames[i]} ${lnames[i]} | sed "s/\(-\|'\)//g" | awk '{print tolower(substr($2,1,7)substr($1,1,1))}';;
+  esac
+}
+
+#add collisions to array with name as key and number as total hits
+collision() {
+  printf "%-12s%s\n" $1 " username not available for ${fnames[i]} ${lnames[i]}" >> $tempfile
+  if [[ ! ${collisions[$1]} ]]; then
+    collisions[$1]=1
+  else
+    collisions[$1]=$((${collisions[$1]} + 1))
+  fi
+}
+
+#recurse into bigger numbers until finding a unique username or passing 99
+findNumber(){
+  username=`echo $namebase $num | awk '{print $1 substr($2,2,3)}'`
+  duplicates=`awk 'NR>2 {print $3}' $outfile | grep $username | wc -l`
+  if [[ $duplicates -gt 0 ]]; then
+    collision $username
+    let num++
+    findNumber
+  else
+    if [[ $num -lt 201 ]]; then
+      printf "%-20s%-25s%-8s\n" "${fnames[i]}" "${lnames[i]}" "$username" >> $outfile
+    else
+      nonames="$nonames ${fnames[i]}__${lnames[i]}"
+    fi
+  fi
+}
+
+#recurse through the 5 username modes before trying numbers
+findName() {
+  if [[ $namesLeft -eq 0 ]]; then
+    num=101
+    namebase=`echo ${fnames[i]} ${lnames[i]} | awk '{print tolower(substr($1,1,1)substr($2,1,5))}'`
+    findNumber
+  else
+    username=`makeName $namesLeft`
+    duplicates=`awk 'NR>2 {print $3}' $outfile | grep $username | wc -l`
+    if [[ $duplicates -gt 0 ]]; then
+      collision $username
+      let namesLeft--
+      findName
+    else
+      printf "%-20s%-25s%-8s\n" "${fnames[i]}" "${lnames[i]}" "$username" >> $outfile
+    fi
+  fi
+}
+
+
+#make an empty output file if not appending
+[ $append  = false ] && printf "%-20s%-25s%-8s\n%s\n" "First Name" "Last Name" "Username" \
+"------------------------------------------------------" > $outfile
+
+#loop though all names and find a unique username for each
+total=${#fnames[@]}
+for i in "${!fnames[@]}"; do
+  echo -n "Processing name $i / $total"; 
+  namesLeft=5
+  findName
+  echo -ne "\r"
+done
+
+
+#generate collision report
+cols=`cat $tempfile | wc -l`
+[[ $cols -gt 0 ]] && printf "%s\n%-20s%s\n%s\n" "-------------------------------------------------------------" \
+"Username" "Total collisions for that username" \
+"-------------------------------------------------------------" >> $tempfile
+
+for i in "${!collisions[@]}"; do
+  echo $i ${collisions[$i]} | awk '{printf "%-20s %s\n",$1,$2}' >> $tempfile
+done
+
+#add unresolved names to report
+nonum=`echo $nonames | wc -w`
+[[ $nonum -gt 0 ]] && printf "%s\n%s\n%s\n" "-------------------------------------------------------------" \
+"Uresolved names:" "-------------------------------------------------------------" >> $tempfile
+for i in $nonames; do
+  echo $i | sed 's/__/ /' >> $tempfile
+done
+
+#show and possibly delete collision report
+cat $tempfile
+[ $keep = false ] && rm $tempfile

@@ -1,0 +1,25 @@
+3 in pascal, 4 in other lang with gui
+
+3:
+promt user for 3 input files, one at a time. include suffix. reprompt if bad file
+  verify it before next one
+2-20 circles
+tell what output file is. make it unique to avoid collisions
+separate and total stats for 3 games
+if graph not strong, prompt for another
+limit 1000000 checks per game - exit program
+some graphic element (text ok)
+output results in table for each game and for all 3 together
+  each game:
+    num circles
+    num arrows
+    acg checks in game
+    avg checks
+    max checks
+  total:
+    total # circles
+    total # arrows
+    avg # checks in game
+    total # of checks
+    max checks in any circle
+
