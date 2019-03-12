@@ -1,5 +1,0 @@
-Number of circles: 4
-Number of arrows: 5
-Total checks: 5
-Max checks in one circle: 2
-Average checks per circle: 1.25
