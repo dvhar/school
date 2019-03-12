@@ -30,7 +30,7 @@ Data structures:
     circles: list of circle objects.
 
 Dependencies:
-    Python3. Turtle graphics requires tkinter library.
+    Python3. Uses the "turtle" library, which uses the "tkinter" library.
 '''
 
 from math import sin, cos, pi, atan
@@ -43,7 +43,7 @@ import os
 def getangle(dx,dy):
     #calculate angle, guard against div by 0 errors
     angle =  (atan(dy/(dx,0.0000001)[dx==0])/pi)*180
-    #make sure arrow doesn't point in opposite direction
+    #make sure arrow doesn't point in opposite direction when moving to the right
     if dx > 0:
         angle += 180
     return angle
@@ -55,34 +55,36 @@ class traverser:
     def __init__(self):
         self.i = 1
         #create an arrow graphic
-        self.g = Turtle()
-        self.g.color('#33ff77')
-        self.g.shape('arrow')
-        self.g.pensize(2)
-        self.g.shapesize(3)
-        self.g.speed(4)
+        self.graphic = Turtle()
+        self.graphic.color('#33ff77')
+        self.graphic.shape('arrow')
+        self.graphic.pensize(2)
+        self.graphic.shapesize(3)
+        self.graphic.speed(4)
         #arrow starts at center
         self.x = 0
         self.y = 0
 
     #go to the next circle
     def next(self, circle):
-        #point the arrow in the right direction and go there
+        #calculate movement
         dx = self.x - circle.x
         dy = self.y - circle.y
-        self.g.setheading(getangle(dx,dy))
-        self.g.goto(circle.x, circle.y)
+        #point in right direction and move to the target
+        self.graphic.setheading(getangle(dx,dy))
+        self.graphic.goto(circle.x, circle.y)
         #add an arrowhead to the line that was drawn
-        pointer = Turtle(visible=False)
-        pointer.screen.tracer(0,0)
-        pointer.penup()
-        pointer.shape('arrow')
-        pointer.color('#33ff77')
-        pointer.setx(0.1*self.x+0.9*circle.x)
-        pointer.sety(0.1*self.y+0.9*circle.y)
-        pointer.setheading(getangle(dx,dy))
-        pointer.showturtle()
-        pointer.screen.tracer(1,6)
+        arrowhead = Turtle(visible=False)
+        arrowhead.screen.tracer(0,0)
+        arrowhead.penup()
+        arrowhead.shape('arrow')
+        arrowhead.color('#33ff77')
+        arrowhead.setx(0.1*self.x+0.9*circle.x)
+        arrowhead.sety(0.1*self.y+0.9*circle.y)
+        arrowhead.setheading(getangle(dx,dy))
+        #make arrowhead visible when in position
+        arrowhead.showturtle()
+        arrowhead.screen.tracer(1,6)
         #update corrdinates, add a check to the circle, and load index of next circle
         self.x = circle.x
         self.y = circle.y
@@ -92,6 +94,7 @@ class traverser:
 #circle class
 class circle:
 
+    #initialize each circle numerically and graphically
     def __init__(self, number, outof):
         #initialize a circle with an empty list of arrows
         self.arrows = []
@@ -101,24 +104,27 @@ class circle:
         self.x = cos(2*pi*(float(number)/outof))*200
         self.y = sin(2*pi*(float(number)/outof))*200 + 30
         self.color = [45,45,45]
+        #colorstate determines which RGB component changes when it gets checked
         self.colorstate = 0
         self.i = number
         #if the circle is not in the placeholder position, give it a graphic
         if number > 0:
-            self.g = Turtle(visible=False)
+            #create turtle graphic member of circle
+            self.graphic = Turtle(visible=False)
             #speed up rendering by setting tracer to 0,0
-            self.g.screen.tracer(0,0)
-            self.g.screen.bgcolor('black')
-            self.g.screen.colormode(255)
-            self.g.color(self.color)
-            self.g.shape('circle')
-            self.g.shapesize(3)
-            self.g.penup()
-            self.g.goto(self.x, self.y)
-            self.g.pendown()
-            self.g.showturtle()
+            self.graphic.screen.tracer(0,0)
+            self.graphic.screen.bgcolor('black')
+            self.graphic.screen.colormode(255)
+            self.graphic.color(self.color)
+            self.graphic.shape('circle')
+            self.graphic.shapesize(3)
+            self.graphic.penup()
+            self.graphic.goto(self.x, self.y)
+            self.graphic.pendown()
+            #make circle visible after attributes are set
+            self.graphic.showturtle()
             #once circle is displayed, reset rendering to normal speed
-            self.g.screen.tracer(1,6)
+            self.graphic.screen.tracer(1,6)
 
     #add an arrow during the input loading phase
     def add_arrow(self, target):
@@ -157,14 +163,14 @@ class circle:
             if self.color[1] == 45:
                 self.colorstate += 1
         #render the newly caluculated color
-        self.g.color(self.color)
+        self.graphic.color(self.color)
 
     #return a random member of the circle's arrow array
     def next(self):
         return self.arrows[randint(1,self.num_arrows)-1]
 
 #global variables
-infile = 'i2';
+infile = '';
 total_checks = 0
 max_checks = 0
 num_circles = 0
@@ -176,8 +182,8 @@ def load_file(infile):
     global num_circles, circles
 
     #open the file and get circle data
-    with open(infile) as f:
-        for i,line in  enumerate(f.readlines()):
+    with open(infile) as inputfile:
+        for i,line in  enumerate(inputfile.readlines()):
             #get the number of circles from the first line and initialize list of circles
             if i == 0:
                 num_circles = int(line)
@@ -199,15 +205,16 @@ def load_file(infile):
             arrow.pendown()
             arrow.pensize(2)
             arrow.goto(circles[a].x, circles[a].y)
-            #add an arrowhead to the line showing direction
+            #create an arrowhead for the line to make it an arrow
             arrowHead = Turtle(visible=False)
             arrowHead.penup()
             arrowHead.shape('arrow')
             arrowHead.color('#553300')
-            #linear interpolation to find the right position near the end of the line
+            #linear interpolation to find the right position on the line to place the arrowhead
             arrowHead.setx(0.1*c.x+0.9*circles[a].x)
             arrowHead.sety(0.1*c.y+0.9*circles[a].y)
             arrowHead.setheading(getangle(c.x-circles[a].x, c.y-circles[a].y))
+            #make arrowhead visible when it is in position
             arrowHead.showturtle()
             arrowHead.screen.tracer(1,6)
 
@@ -235,7 +242,7 @@ while (True):
 #load the file and play the game
 load_file(infile)
 game()
-#draw game statistics under the game area when it is done
+#draw game statistics under the game area when it is done and wait for a click to close
 text = Turtle(visible=False)
 text.penup()
 text.goto(0,-250)
