@@ -12,10 +12,9 @@
 #include <sys/msg.h>
 #include "queue.h"
 #include "control.h"
-#define PERMS 0644
 #define key 7676767
 #define MAXFORKS 100
-#define NUMQUEUES 9
+#define NUMQUEUES 8
 
 
 //max interval and other global vars
@@ -159,7 +158,7 @@ int main(int argc, char**argv){
     signal(SIGTERM, &sigterm_handler);
 
     //set up message queue
-    if ((msqid = msgget(key, PERMS | IPC_CREAT)) == -1) {
+    if ((msqid = msgget(key, 0644 | IPC_CREAT)) == -1) {
         perror("msgget"); exit(1);
     }
 
@@ -330,7 +329,6 @@ int main(int argc, char**argv){
                     controlTable[fakePid].blockS = controlTable[fakePid].endSliceS + (rand() % 6);
                     srand(rand()+*nseconds);
                     controlTable[fakePid].blockNS = controlTable[fakePid].endSliceNS + ((rand() % 1000) * 1E6);
-                    enqueue(fakePid, &backofQueues[8]);
                     snprintf(line, 200, "Blocking Process %u until %u:%u. used %uns of timeslice. time: %u:%u\n",
                       fakePid, controlTable[fakePid].blockS, controlTable[fakePid].blockNS, controlTable[fakePid].burstNS, *seconds, *nseconds);
                     printf(line);

@@ -11,7 +11,6 @@
 #include <sys/stat.h>
 #include <sys/msg.h>
 #include "control.h"
-#define PERMS 0644
 #define key 7676767
 
 //message queue
@@ -49,7 +48,7 @@ int main(int argc, char**argv){
     sscanf(argv[1], "%d %d %d %d %d", &fakePid, &shmidClock, &shmidCtrl, &terminateProb, &blockProb);
 
     //access message queue
-    if ((msqid = msgget(key, PERMS)) == -1) { /* connect to the queue */
+    if ((msqid = msgget(key, 0644)) == -1) { /* connect to the queue */
          perror("msgget - user");
          exit(1);
     }
