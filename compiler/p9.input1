@@ -1,0 +1,9 @@
+INT X1 1 \p9
+Begin  
+  Read [ X1 ] : 
+  Loop [ X1 = > 0 ]\line 4 needs loop
+  Begin
+        Output [ X1 ] : 
+        X1 = X1 - 1 : 
+  End :
+End
